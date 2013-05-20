@@ -1,0 +1,125 @@
+#!/usr/bin/python2
+
+import sys
+import argparse
+import sympy
+
+try:
+    import readline
+except ImportError:
+    has_readline = False
+else:
+    has_readline = True
+
+try:
+    import colorama
+except ImportError:
+    has_colorama = False
+else:
+    has_colorama = True
+
+# -------------------------------------------------------------
+# This stuff will eventually be imported from sympy.parsing
+# -------------------------------------------------------------
+class sympyparser(object):
+    """ Temporary parser """
+    def parse(self, line):
+        if line == '':
+            return None
+        return str(eval(line))
+# -------------------------------------------------------------
+
+if has_colorama:
+    colorama.init()
+
+_parsers = {
+    'sympy': sympyparser(),
+}
+
+_color_schemes = {
+    'nocolor': (
+        ['', '', '', ''],
+        ['', '', '', '']),
+    'linux': (
+        ['\033[32m', '\033[1m', '\033[22m', '\033[39m'],
+        ['\033[31m', '\033[1m', '\033[22m', '\033[39m']),
+    'lightbg': (
+        ['\033[34m', '\033[1m', '\033[22m', '\033[39m'],
+        ['\033[31m', '\033[1m', '\033[22m', '\033[39m']),
+}
+
+
+class TerminalShell(object):
+    def __init__(self, parser, color='linux'):
+
+        if color not in _color_schemes:
+            raise ValueError("Invalid color: {0}".format(color))
+
+        self._incolors, self._outcolors = _color_schemes[color]
+        self.lineno = 1
+        self.parser = parser
+
+    def _get_in_prompt(self):
+        return '\n{1}In[{2}{0}{3}]:= {4}'.format(self.lineno, *self._incolors)
+
+    def _get_out_prompt(self):
+        return '{1}Out[{2}{0}{3}]= {4}'.format(self.lineno, *self._outcolors)
+
+    def embed(self):
+        print "sympy_shell with sympy {0}".format(sympy.__version__)
+
+        line, result = '', ''
+        while True:
+            try:
+                line += raw_input(self._get_in_prompt())
+            except EOFError:
+                print ""
+                break
+
+            if line.strip() == '':  # ignore whitespace lines
+                continue
+
+            result = self.parser.parse(line)
+            if result is not None:
+                print self._get_out_prompt() + result
+            self.lineno += 1
+            line, result = '', ''
+
+
+def main():
+    argparser = argparse.ArgumentParser(
+        prog='sympy_shell',
+        description="sympy_shell is ...",
+    )
+
+    argparser.add_argument(
+        '--lang', '-l', default='sympy', help='language to parse')
+
+    argparser.add_argument(
+        '--color', '-c', default='linux', help='interactive shell colors')
+
+    args = argparser.parse_args()
+
+    def _invalid_arg(name):
+        aliases = '/'.join(next(a.option_strings for a in argparser._actions
+                           if a.dest == name))
+        argparser.error('argument {0}: invalid choice: {1}'.format(
+            aliases, getattr(args, name)))
+
+    # Convert lower for case insensitvity
+    color = args.color.lower()
+    lang = args.lang.lower()
+
+    if color not in _color_schemes:
+        _invalid_arg('color')
+
+    if lang not in _parsers:
+        _invalid_arg('lang')
+
+    parser = _parsers[lang]
+
+    shell = TerminalShell(parser, color=color)
+    shell.embed()
+
+if __name__ == '__main__':
+    main()

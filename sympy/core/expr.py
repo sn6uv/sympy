@@ -2793,7 +2793,7 @@ class Expr(Basic, EvalfMixin):
         ``False`` otherwise.
         """
         hit = False
-        cls = expr.__class__
+        func = expr.func
         # XXX: Hack to support non-Basic args
         #              |
         #              V
@@ -2805,7 +2805,7 @@ class Expr(Basic, EvalfMixin):
                 sargs.append(arg)
 
             if hit:
-                expr = cls(*sargs)
+                expr = func(*sargs)
 
         if hasattr(expr, hint):
             newexpr = getattr(expr, hint)(**hints)
